@@ -333,43 +333,37 @@ for ($i = 6; $i >= 0; $i--) {
 
   /* ── Stat cards ── */
   .stats-row {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
     animation: fadeUp 0.5s 0.3s ease both;
   }
 
   .stat-card {
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 18px; padding: 22px 20px;
+    border-radius: 14px; padding: 18px;
     position: relative; overflow: hidden;
-    transition: transform 0.2s, border-color 0.2s;
+    transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
     cursor: default;
   }
   .stat-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: var(--accent);
-    opacity: 0.7;
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent); opacity: 0.12;
   }
-  .stat-card:hover { transform: translateY(-3px); border-color: rgba(99,140,200,0.24); }
+  .stat-card:hover { transform: translateY(-3px); border-color: rgba(99,140,200,0.18); box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
 
-  .stat-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+  .stat-top { display: flex; align-items: center; justify-content: flex-start; gap: 12px; margin-bottom: 12px; }
   .stat-icon {
-    width: 42px; height: 42px; border-radius: 12px;
+    width: 44px; height: 44px; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 19px;
-    background: color-mix(in srgb, var(--accent) 16%, transparent);
-  }
-  .stat-badge {
-    font-size: 11.5px; font-weight: 500; color: var(--green);
-    background: rgba(16,185,129,0.1); padding: 3px 8px; border-radius: 20px;
+    font-size: 18px; flex-shrink: 0;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
   }
   .stat-num {
-    font-family: 'Syne', sans-serif; font-size: 36px; font-weight: 800;
-    line-height: 1; letter-spacing: -1px;
-    background: linear-gradient(135deg, #fff, var(--text-muted));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 800;
+    line-height: 1; letter-spacing: -0.6px; color: #fff;
   }
-  .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 6px; font-weight: 300; letter-spacing: 0.3px; }
+  .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 6px; font-weight: 400; letter-spacing: 0.2px; }
 
   /* ── Charts row ── */
   .charts-row {
@@ -482,6 +476,15 @@ for ($i = 6; $i >= 0; $i--) {
   .bar-value { font-size: 11px; color: #fff; margin-bottom: 6px; font-weight: 600; }
   .bar-label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.02em; }
   .card-note { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+
+  @media (max-width: 900px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 520px) {
+    .stats-row { grid-template-columns: 1fr; }
+    .stat-top { gap: 10px; }
+    .stat-num { font-size: 26px; }
+  }
 
   /* Donut chart */
   .donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
