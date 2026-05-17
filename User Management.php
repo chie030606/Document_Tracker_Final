@@ -281,23 +281,27 @@ $usersJson = json_encode($usersForJs, JSON_UNESCAPED_UNICODE);
   .sidebar {
     width: var(--sidebar-w); flex-shrink: 0;
     position: fixed; top: 64px; left: 0; bottom: 0;
-    background: rgba(15,27,45,0.75); backdrop-filter: blur(18px);
-    border-right: 1px solid var(--border);
-    padding: 20px 12px; display: flex; flex-direction: column; gap: 4px;
+    background: rgba(15,27,45,0.88);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(255,255,255,0.08);
+    padding: 22px 16px;
+    display: flex; flex-direction: column; gap: 10px;
     animation: slideRight 0.5s 0.1s ease both; overflow-y: auto;
   }
   @keyframes slideRight { from { transform: translateX(-30px); opacity: 0; } to { transform: none; opacity: 1; } }
   .nav-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 11px 14px; border-radius: 12px;
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px; border-radius: 16px;
     cursor: pointer; color: var(--text-muted);
-    font-size: 14px; font-weight: 400;
-    transition: background 0.2s, color 0.2s;
+    font-size: 14px; font-weight: 500;
+    transition: transform 0.2s, background 0.2s, color 0.2s, border-color 0.2s;
     text-decoration: none; border: 1px solid transparent;
+    background: rgba(255,255,255,0.02);
   }
-  .nav-item:hover { background: rgba(37,99,235,0.08); color: var(--text); }
-  .nav-item.active { background: linear-gradient(135deg, rgba(37,99,235,0.22), rgba(37,99,235,0.08)); color: var(--blue-light); border-color: rgba(37,99,235,0.25); font-weight: 500; }
-  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-item:hover { background: rgba(37,99,235,0.14); color: var(--text); transform: translateX(2px); }
+  .nav-item.active { background: rgba(37,99,235,0.22); color: var(--blue-light); border-color: rgba(37,99,235,0.24); font-weight: 600; box-shadow: inset 4px 0 0 0 var(--blue); }
+  .nav-icon { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; background: rgba(255,255,255,0.05); color: var(--blue-light); font-size: 18px; }
+  .nav-item.active .nav-icon { background: rgba(37,99,235,0.22); color: #fff; }
 
   /* ── Main ── */
   .main { margin-left: var(--sidebar-w); flex: 1; padding: 32px 36px 60px; display: flex; flex-direction: column; gap: 24px; }
