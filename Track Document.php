@@ -685,7 +685,6 @@ if ($pdo instanceof PDO) {
             <th onclick="sortBy('status')">Status <span class="sort-icon">↕</span></th>
             <th>Progress</th>
             <th onclick="sortBy('date')">Date <span class="sort-icon">↕</span></th>
-            <th>Action</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -837,7 +836,6 @@ if ($pdo instanceof PDO) {
           </div>
         </td>
         <td class="date-cell">${doc.date}</td>
-        <td><button class="action-btn" onclick="viewDoc('${doc.id}')">👁 View</button></td>
       `;
       tbody.appendChild(tr);
     });
