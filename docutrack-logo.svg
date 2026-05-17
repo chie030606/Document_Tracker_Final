@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="logoTitle">
+  <title id="logoTitle">DocuTrack logo</title>
+  <defs>
+    <linearGradient id="docGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="104" height="104" rx="24" fill="url(#docGradient)"/>
+  <path d="M36 30h36l20 20v40a8 8 0 0 1-8 8H36a8 8 0 0 1-8-8V38a8 8 0 0 1 8-8z" fill="#fff" opacity="0.95"/>
+  <path d="M72 30v20h20" stroke="#2563eb" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M44 62h28" stroke="#2563eb" stroke-width="5" stroke-linecap="round"/>
+  <path d="M44 76h28" stroke="#2563eb" stroke-width="5" stroke-linecap="round"/>
+  <path d="M44 90h20" stroke="#2563eb" stroke-width="5" stroke-linecap="round"/>
+</svg>
