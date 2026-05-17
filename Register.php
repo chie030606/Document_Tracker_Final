@@ -153,7 +153,6 @@ function e($v){ return htmlspecialchars($v ?? '', ENT_QUOTES, 'UTF-8'); }
         <div class="auth-brand">
           <img src="docutrack-logo.svg" alt="DocuTrack logo" class="brand-logo">
           <h1 id="reg-title">Create account</h1>
-          <p class="muted">Register to start tracking documents securely</p>
         </div>
 
         <?php if (!empty($errors)): ?>
