@@ -73,7 +73,6 @@ function e($v): string {
             <div class="auth-brand">
                 <img src="docutrack-logo.svg" alt="DocuTrack logo" class="brand-logo">
                 <h1 id="site-title">DocuTrack</h1>
-                <p class="muted">Document Tracking & Management System</p>
             </div>
 
             <?php if ($flashSuccess !== ''): ?>
@@ -96,7 +95,7 @@ function e($v): string {
                         <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM3 21a9 9 0 0 1 18 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                         </svg>
-                        <input name="username" type="text" placeholder="e.g. maria.santisima" required value="<?php echo e($_POST['username'] ?? ''); ?>">
+                        <input name="username" type="text" placeholder="Enter username" required value="<?php echo e($_POST['username'] ?? ''); ?>">
                     </div>
                 </label>
 
