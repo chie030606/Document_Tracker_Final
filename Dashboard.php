@@ -152,7 +152,7 @@ for ($i = 6; $i >= 0; $i--) {
     $day = date('Y-m-d', strtotime("-{$i} days"));
     $weeklyLabels[] = $day;
     $weeklyDisplayLabels[] = date('D', strtotime($day));
-    $weeklyValues[] = $weeklyData[$day] ?? 0;
+    $weeklyValues[] = (int)($weeklyData[$day] ?? 0);
 }
 ?>
 <!DOCTYPE html>
@@ -373,41 +373,114 @@ for ($i = 6; $i >= 0; $i--) {
 
   /* ── Charts row ── */
   .charts-row {
-    display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px;
+    display: grid; grid-template-columns: 3.5fr 1fr;
+    gap: 16px;
     animation: fadeUp 0.5s 0.4s ease both;
+  }
+
+  .bar-chart-container {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 18px;
+    width: 100%;
+    align-items: flex-end;
+    min-height: 220px;
+  }
+
+  .y-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 100%;
+    height: 190px;
+  }
+
+  .y-axis-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: right;
+    width: 100%;
+    padding-right: 4px;
+  }
+
+  .bar-chart {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 18px;
+    height: 190px;
+    width: 100%;
+    border-left: 1px solid rgba(255,255,255,0.12);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-width: 56px;
+    max-width: 92px;
+  }
+
+  .bar-wrap {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: 100%;
+    min-height: 190px;
+    position: relative;
+  }
+
+  .bar-wrap::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(to top,
+      transparent 0%, transparent 32%, rgba(255,255,255,0.08) 32%, rgba(255,255,255,0.08) 34%,
+      transparent 34%, transparent 52%, rgba(255,255,255,0.08) 52%, rgba(255,255,255,0.08) 54%,
+      transparent 54%, transparent 72%, rgba(255,255,255,0.08) 72%, rgba(255,255,255,0.08) 74%,
+      transparent 74%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .bar {
+    width: 80%;
+    max-width: 78px;
+    border-radius: 12px 12px 0 0;
+    transition: transform 0.2s, opacity 0.2s;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.16);
+    animation: growUp 0.8s 0.3s ease both;
+    transform-origin: bottom;
+    min-height: 8px;
   }
 
   .card {
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 18px; padding: 24px;
+    border-radius: 18px;
+    padding: 24px;
   }
+
   .card-title {
     font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700;
     margin-bottom: 20px; color: var(--text);
     display: flex; align-items: center; gap: 8px;
   }
+
   .card-title::before {
     content: ''; display: block; width: 3px; height: 16px;
     background: var(--blue); border-radius: 2px;
   }
 
-  /* Bar chart */
-  .bar-chart { display: flex; align-items: flex-end; gap: 10px; height: 140px; }
-  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-  .bar-wrap { flex: 1; display: flex; align-items: flex-end; width: 100%; }
-  .bar {
-    width: 100%; border-radius: 6px 6px 0 0;
-    background: linear-gradient(to top, var(--blue), var(--blue-light));
-    transition: opacity 0.2s;
-    box-shadow: 0 0 14px rgba(37,99,235,0.25);
-    animation: growUp 0.8s 0.5s ease both;
-    transform-origin: bottom;
-  }
   @keyframes growUp { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
   .bar:hover { opacity: 0.75; }
-  .bar-value { font-size: 11px; color: #fff; margin-bottom: 4px; }
-  .bar-label { font-size: 10px; color: var(--text-muted); }
+  .bar-value { font-size: 11px; color: #fff; margin-bottom: 6px; font-weight: 600; }
+  .bar-label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.02em; }
   .card-note { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
 
   /* Donut chart */
@@ -540,7 +613,6 @@ for ($i = 6; $i >= 0; $i--) {
       <div class="stat-card" style="--accent: #3b82f6;">
         <div class="stat-top">
           <div class="stat-icon" style="--accent:#3b82f6;">📄</div>
-          <span class="stat-badge">Live</span>
         </div>
         <div class="stat-num"><?php echo e($counts['total']); ?></div>
         <div class="stat-label">Total Documents</div>
@@ -548,7 +620,6 @@ for ($i = 6; $i >= 0; $i--) {
       <div class="stat-card" style="--accent: #f59e0b;">
         <div class="stat-top">
           <div class="stat-icon" style="--accent:#f59e0b;">⏱</div>
-          <span class="stat-badge">Live</span>
         </div>
         <div class="stat-num"><?php echo e($counts['pending']); ?></div>
         <div class="stat-label">Pending Documents</div>
@@ -556,7 +627,6 @@ for ($i = 6; $i >= 0; $i--) {
       <div class="stat-card" style="--accent: #8b5cf6;">
         <div class="stat-top">
           <div class="stat-icon" style="--accent:#8b5cf6;">📊</div>
-          <span class="stat-badge">Live</span>
         </div>
         <div class="stat-num"><?php echo e($counts['processing']); ?></div>
         <div class="stat-label">Processing Documents</div>
@@ -564,7 +634,6 @@ for ($i = 6; $i >= 0; $i--) {
       <div class="stat-card" style="--accent: #10b981;">
         <div class="stat-top">
           <div class="stat-icon" style="--accent:#10b981;">✅</div>
-          <span class="stat-badge">Live</span>
         </div>
         <div class="stat-num"><?php echo e($counts['completed']); ?></div>
         <div class="stat-label">Completed Documents</div>
@@ -572,7 +641,6 @@ for ($i = 6; $i >= 0; $i--) {
       <div class="stat-card" style="--accent: #6d28d9;">
         <div class="stat-top">
           <div class="stat-icon" style="--accent:#6d28d9;">👥</div>
-          <span class="stat-badge">Live</span>
         </div>
         <div class="stat-num"><?php echo e($userStats['total']); ?></div>
         <div class="stat-label">Total Users</div>
@@ -580,7 +648,6 @@ for ($i = 6; $i >= 0; $i--) {
       <div class="stat-card" style="--accent: #2563eb;">
         <div class="stat-top">
           <div class="stat-icon" style="--accent:#2563eb;">🔑</div>
-          <span class="stat-badge">Live</span>
         </div>
         <div class="stat-num"><?php echo e($userStats['admins']); ?></div>
         <div class="stat-label">Administrators</div>
@@ -588,7 +655,6 @@ for ($i = 6; $i >= 0; $i--) {
       <div class="stat-card" style="--accent: #10b981;">
         <div class="stat-top">
           <div class="stat-icon" style="--accent:#10b981;">🟢</div>
-          <span class="stat-badge">Live</span>
         </div>
         <div class="stat-num"><?php echo e($userStats['active']); ?></div>
         <div class="stat-label">Active Users</div>
@@ -600,8 +666,17 @@ for ($i = 6; $i >= 0; $i--) {
       <!-- Bar Chart -->
       <div class="card">
         <div class="card-title">Weekly Request Activity</div>
-      <div class="card-note">Daily limit: 50 requests. Bars show percent of the daily quota used.</div>
+      <div class="card-note">Shows requests created each day for the past week.</div>
+      <div class="bar-chart-container">
+        <div class="y-axis">
+          <div class="y-axis-label y-25">25</div>
+          <div class="y-axis-label y-15">15</div>
+          <div class="y-axis-label y-10">10</div>
+          <div class="y-axis-label y-5">5</div>
+          <div class="y-axis-label y-0">0</div>
+        </div>
         <div class="bar-chart" id="barChart"></div>
+      </div>
       </div>
       <!-- Donut Chart -->
       <div class="card">
@@ -692,21 +767,25 @@ for ($i = 6; $i >= 0; $i--) {
     completed: <?php echo (int)$counts['completed']; ?>
   };
 
-  const dailyLimit = 50;
   const chart = document.getElementById('barChart');
+  const colors = ['#2563eb', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#22c55e', '#0ea5e9'];
+  const maxScale = 25;
+  const maxHeightPx = 170;
   weeklyLabels.forEach((label, index) => {
     const col = document.createElement('div');
     col.className = 'bar-col';
-    const value = weeklyVals[index];
-    const percent = Math.min(100, Math.round((value / dailyLimit) * 100));
-    const barHeight = percent;
-    const overflow = value > dailyLimit ? ' +' : '';
+    const value = Number(weeklyVals[index] || 0);
+    const scaleValue = Math.min(value, maxScale);
+    const barHeight = value > 0 ? Math.max(18, Math.round((scaleValue / maxScale) * maxHeightPx)) : 8;
+    const color = colors[index % colors.length];
+    const light = `${color}44`;
+    const overflowLabel = value > maxScale ? ' +' : '';
     col.innerHTML = `
       <div class="bar-wrap">
-        <div class="bar" style="height:${barHeight}%; animation-delay:${0.5 + index*0.07}s;" title="${value} / ${dailyLimit} requests (${percent}%)"></div>
+        <div class="bar" style="height:${barHeight}px; background: linear-gradient(180deg, ${color}, ${light}); animation-delay:${0.3 + index*0.06}s;" title="${value} requests"></div>
       </div>
-      <div class="bar-value">${value}/${dailyLimit}${overflow}</div>
-      <div class="bar-label" title="${weeklyDates[index]}">${label} • ${percent}%</div>
+      <div class="bar-value">${value}${overflowLabel}</div>
+      <div class="bar-label" title="${weeklyDates[index]}">${label}</div>
     `;
     chart.appendChild(col);
   });

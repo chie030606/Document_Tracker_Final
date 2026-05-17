@@ -44,8 +44,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
         exit;
     }
 
-    if ($stmt = $mysqli->prepare("UPDATE requests SET status = ?, progress = ?, remarks = ? WHERE tracking_id = ?")) {
-        $stmt->bind_param('siss', $status, $progress, $remarks, $trackingId);
+    // Check if `updated_at` column exists so we can set it when updating status
+    $useUpdated = false;
+    $colRes = $mysqli->query("SHOW COLUMNS FROM requests LIKE 'updated_at'");
+    if ($colRes) {
+      if ($colRes->num_rows > 0) $useUpdated = true;
+      $colRes->free();
+    }
+
+    if ($useUpdated) {
+      $sql = "UPDATE requests SET status = ?, progress = ?, remarks = ?, updated_at = NOW() WHERE tracking_id = ?";
+    } else {
+      $sql = "UPDATE requests SET status = ?, progress = ?, remarks = ? WHERE tracking_id = ?";
+    }
+
+    if ($stmt = $mysqli->prepare($sql)) {
+      $stmt->bind_param('siss', $status, $progress, $remarks, $trackingId);
         if ($stmt->execute()) {
             echo json_encode(['success' => true]);
         } else {

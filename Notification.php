@@ -20,7 +20,24 @@ if ($mysqli instanceof mysqli) {
     $res = $mysqli->query("SHOW TABLES LIKE 'requests'");
     if ($res && $res->num_rows > 0) {
         $res->free();
-        $q = "SELECT tracking_id, COALESCE(fullname, full_name) AS fullname, COALESCE(document_type, doc_type) AS document_type, status, COALESCE(progress,0) AS progress, DATE_FORMAT(created_at, '%Y-%m-%d') AS date, DATE_FORMAT(created_at, '%Y-%m-%d %h:%i %p') AS timestamp FROM requests ORDER BY created_at DESC LIMIT 20";
+        // Determine whether the requests table has an `updated_at` column.
+        $useUpdated = false;
+        $colRes = $mysqli->query("SHOW COLUMNS FROM requests LIKE 'updated_at'");
+        if ($colRes) {
+          if ($colRes->num_rows > 0) $useUpdated = true;
+          $colRes->free();
+        }
+
+        // Build time expressions depending on availability of updated_at
+        if ($useUpdated) {
+          $timeSelect = "DATE_FORMAT(COALESCE(updated_at, created_at), '%Y-%m-%d') AS date, DATE_FORMAT(COALESCE(updated_at, created_at), '%Y-%m-%d %h:%i %p') AS timestamp";
+          $orderBy = "COALESCE(updated_at, created_at) DESC";
+        } else {
+          $timeSelect = "DATE_FORMAT(created_at, '%Y-%m-%d') AS date, DATE_FORMAT(created_at, '%Y-%m-%d %h:%i %p') AS timestamp";
+          $orderBy = "created_at DESC";
+        }
+
+        $q = "SELECT tracking_id, COALESCE(fullname, full_name) AS fullname, COALESCE(document_type, doc_type) AS document_type, status, COALESCE(progress,0) AS progress, $timeSelect FROM requests ORDER BY $orderBy LIMIT 20";
         if ($r = $mysqli->query($q)) {
             while ($row = $r->fetch_assoc()) {
                 $status = trim($row['status'] ?? '');
