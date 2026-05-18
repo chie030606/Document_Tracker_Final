@@ -1,21 +1,6 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+require_once __DIR__ . '/app_init.php';
 $notifications = [];
-$mysqli = null;
-$pdo = null;
-$conn = null;
-@include_once __DIR__ . '/db.php';
-@include_once __DIR__ . '/database.php/db.php';
-if (isset($mysqli) && $mysqli instanceof mysqli) {
-    // use existing mysqli connection
-} elseif (isset($conn) && $conn instanceof mysqli) {
-    $mysqli = $conn;
-} else {
-    @$tmp = new mysqli('127.0.0.1', 'root', '', 'docu_tracker');
-    if (!$tmp->connect_errno) {
-        $mysqli = $tmp;
-    }
-}
 if ($mysqli instanceof mysqli) {
     $res = $mysqli->query("SHOW TABLES LIKE 'requests'");
     if ($res && $res->num_rows > 0) {

@@ -10,27 +10,7 @@ function e($v){ return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 $counts = ['total'=>0,'pending'=>0,'processing'=>0,'completed'=>0];
 $recent = [];
 
-/* try to obtain a mysqli connection (prefer existing connector) */
-$mysqli = null;
-if (file_exists(__DIR__ . '/db.php')) {
-    include_once __DIR__ . '/db.php'; // may set $mysqli or $conn
-}
-if (!$mysqli && file_exists(__DIR__ . '/database.php/db.php')) {
-    include_once __DIR__ . '/database.php/db.php';
-}
-if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
-    // common fallbacks
-    if (isset($mysqli) && $mysqli instanceof mysqli) {
-        // ok
-    } elseif (isset($conn) && $conn instanceof mysqli) {
-        $mysqli = $conn;
-    } else {
-        // try direct connect
-        @$tmp = new mysqli('127.0.0.1','root','','docu_tracker');
-        if (!$tmp->connect_errno) $mysqli = $tmp;
-        unset($tmp);
-    }
-}
+require_once __DIR__ . '/app_init.php';
 
 $userStats = ['total'=>0,'admins'=>0,'active'=>0];
 $weeklyData = [];

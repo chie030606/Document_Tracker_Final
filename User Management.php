@@ -1,18 +1,11 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+require_once __DIR__ . '/app_init.php';
 $users = [];
 $flashMessage = $_SESSION['flash_success'] ?? '';
 if ($flashMessage !== '') {
     unset($_SESSION['flash_success']);
 }
 $flashError = '';
-$dbPaths = [__DIR__ . '/database.php/db.php', __DIR__ . '/db.php'];
-foreach ($dbPaths as $dbPath) {
-    if (file_exists($dbPath)) {
-        include_once $dbPath;
-        break;
-    }
-}
 if (isset($conn) && $conn instanceof mysqli) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_user') {
         $userId    = trim((string)($_POST['user_id'] ?? ''));

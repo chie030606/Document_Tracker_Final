@@ -233,7 +233,5 @@ function e($v){ return htmlspecialchars($v ?? '', ENT_QUOTES, 'UTF-8'); }
       </div>
     </main>
   </div>
-
-  <footer class="page-footer">© <?php echo date('Y'); ?> Docu Tracker</footer>
 </body>
 </html>

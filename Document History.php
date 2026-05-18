@@ -1,22 +1,7 @@
 <?php
+require_once __DIR__ . '/app_init.php';
 // ensure session available
-if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 $events = [];
-$mysqli = null;
-$pdo = null;
-$conn = null;
-@include_once __DIR__ . '/db.php';
-@include_once __DIR__ . '/database.php/db.php';
-if (isset($mysqli) && $mysqli instanceof mysqli) {
-    // use existing mysqli connection
-} elseif (isset($conn) && $conn instanceof mysqli) {
-    $mysqli = $conn;
-} else {
-    @$tmp = new mysqli('127.0.0.1', 'root', '', 'docu_tracker');
-    if (!$tmp->connect_errno) {
-        $mysqli = $tmp;
-    }
-}
 if ($mysqli instanceof mysqli) {
     $res = $mysqli->query("SHOW TABLES LIKE 'requests'");
     if ($res && $res->num_rows > 0) {
@@ -455,16 +440,7 @@ if ($mysqli instanceof mysqli) {
         <label>Tracking ID</label>
         <input type="text" id="fTrk" placeholder="e.g. TRK-001" oninput="renderTimeline()">
       </div>
-      <div class="filter-group">
-        <label>Actor</label>
-        <select id="fActor" onchange="renderTimeline()">
-          <option value="">All Actors</option>
-          <option value="System">System</option>
-          <option value="Maria Santisima">Maria Santisima</option>
-          <option value="John Doe">John Doe</option>
-          <option value="Jane Smith">Jane Smith</option>
-        </select>
-      </div>
+      <!-- Actor filter removed (static names were not from DB) -->
       <div class="filter-group">
         <label>Date From</label>
         <input type="date" id="fDateFrom" onchange="renderTimeline()">
@@ -539,12 +515,8 @@ if ($mysqli instanceof mysqli) {
     system:       { icon: 'ℹ️', color: '#6366f1', label: 'System' },
   };
 
-  const actorColors = {
-    'System':          'linear-gradient(135deg,#6366f1,#4f46e5)',
-    'Maria Santisima': 'linear-gradient(135deg,#2563eb,#8b5cf6)',
-    'John Doe':        'linear-gradient(135deg,#10b981,#059669)',
-    'Jane Smith':      'linear-gradient(135deg,#f59e0b,#d97706)',
-  };
+  // No static actor color map to avoid hardcoded names from UI/database
+  const actorColors = {};
 
   function initials(name) { return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
 
@@ -559,7 +531,7 @@ if ($mysqli instanceof mysqli) {
     const q      = document.getElementById('searchInput').value.toLowerCase();
     const type   = document.getElementById('fType').value;
     const trk    = document.getElementById('fTrk').value.toLowerCase();
-    const actor  = document.getElementById('fActor').value;
+    // actor filter removed; don't read static actor element
     const from   = document.getElementById('fDateFrom').value;
     const to     = document.getElementById('fDateTo').value;
 
@@ -567,10 +539,9 @@ if ($mysqli instanceof mysqli) {
       const matchQ = !q || e.title.toLowerCase().includes(q) || e.docType.toLowerCase().includes(q) || e.trk.toLowerCase().includes(q) || e.actor.toLowerCase().includes(q);
       const matchT = !type  || e.type === type;
       const matchR = !trk   || e.trk.toLowerCase().includes(trk);
-      const matchA = !actor || e.actor === actor;
       const matchF = !from  || e.date >= from;
       const matchTo= !to    || e.date <= to;
-      return matchQ && matchT && matchR && matchA && matchF && matchTo;
+      return matchQ && matchT && matchR && matchF && matchTo;
     });
   }
 
@@ -652,7 +623,7 @@ if ($mysqli instanceof mysqli) {
   function loadMore() { visibleCount += PAGE_SIZE; renderTimeline(); }
 
   function clearFilters() {
-    ['fType','fActor','fDateFrom','fDateTo'].forEach(id => document.getElementById(id).value = '');
+    ['fType','fDateFrom','fDateTo'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('fTrk').value = '';
     document.getElementById('searchInput').value = '';
     visibleCount = PAGE_SIZE;
@@ -669,7 +640,7 @@ if ($mysqli instanceof mysqli) {
 
   // ── Export ──
   function exportLogs() {
-    const rows = [['Event','Tracking ID','Document Type','Actor','Date','Time']];
+    const rows = [['Event','Tracking ID','Document Type','Name','Date','Time']];
     filtered.forEach(e => rows.push([e.title, e.trk, e.docType, e.actor, e.date, e.time]));
     const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
     const a = document.createElement('a');
@@ -689,7 +660,7 @@ if ($mysqli instanceof mysqli) {
     document.getElementById('dTitle').textContent = e.title;
     document.getElementById('dDesc').textContent = e.docType + (e.trk !== '—' ? ' · ' + e.trk : '');
     document.getElementById('dRows').innerHTML = [
-      { label: 'Actor', value: e.actor },
+      { label: 'Name', value: e.actor },
       { label: 'Date & Time', value: e.date + ' at ' + e.time },
       ...Object.entries(e.details).map(([label, value]) => ({ label, value }))
     ].map(r => `<div class="detail-row"><span class="detail-label">${r.label}</span><span class="detail-value">${r.value}</span></div>`).join('');

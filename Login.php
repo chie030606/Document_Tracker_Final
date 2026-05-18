@@ -2,7 +2,10 @@
 session_start();
 header('Content-Type: text/html; charset=utf-8');
 
-require_once __DIR__ . '/database.php/db.php';
+require_once __DIR__ . '/db.php';
+if (!isset($conn) || !$conn instanceof mysqli) {
+    require_once __DIR__ . '/database.php/db.php';
+}
 
 $flashSuccess = $_SESSION['flash_success'] ?? '';
 if ($flashSuccess !== '') {

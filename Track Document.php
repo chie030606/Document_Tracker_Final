@@ -1,35 +1,8 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) session_start();
-// Try to load project's DB connector(s) and fall back to a direct mysqli if missing.
-// This version supports either mysqli ($mysqli or $conn) or PDO ($pdo) connectors.
+require_once __DIR__ . '/app_init.php';
 
 $rows = [];
 $selectedId = isset($_GET['id']) ? (string)$_GET['id'] : '';
-
-$mysqli = null;
-$pdo = null;
-$conn = null;
-
-// Prefer project root db.php, then legacy database.php/db.php
-@include_once __DIR__ . '/db.php';
-@include_once __DIR__ . '/database.php/db.php';
-
-// After includes, detect available connectors
-if (isset($mysqli) && $mysqli instanceof mysqli) {
-    // already provided by included file
-} elseif (isset($conn) && $conn instanceof mysqli) {
-    $mysqli = $conn;
-} elseif (isset($pdo) && $pdo instanceof PDO) {
-    // PDO is available; use it below
-} else {
-    // try to create a mysqli connection as last resort
-    @$tmp = new mysqli('127.0.0.1', 'root', '', 'docu_tracker');
-    if ($tmp && !$tmp->connect_errno) {
-        $mysqli = $tmp;
-    } else {
-        $mysqli = null;
-    }
-}
 
 // Handle status updates from the update modal
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update-status') {

@@ -421,7 +421,10 @@
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=utf-8');
     // include database connection
-    include __DIR__ . '/database.php/db.php';
+    require_once __DIR__ . '/db.php';
+    if (!isset($conn) || !$conn instanceof mysqli) {
+        include __DIR__ . '/database.php/db.php';
+    }
 
     // Basic required fields
     $fullName = $_POST['fullName'] ?? '';
