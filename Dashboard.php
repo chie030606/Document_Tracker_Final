@@ -547,6 +547,27 @@ for ($i = 6; $i >= 0; $i--) {
 
   .date-cell { color: var(--text-muted); font-size: 12.5px; font-weight: 300; }
 
+  /* Real-time update animation */
+  @keyframes fadeInRow {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .update-fade {
+    animation: fadeInRow 0.4s ease-out forwards;
+    opacity: 0;
+  }
+
+  .update-fade.fade-in {
+    animation: fadeInRow 0.4s ease-out forwards;
+  }
+
   /* scrollbar */
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -813,6 +834,92 @@ for ($i = 6; $i >= 0; $i--) {
       r.style.display = r.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
     });
   }
+
+  // Real-time updates for recent documents
+  let lastDocumentCount = 0;
+  let updateInProgress = false;
+
+  async function updateRecentDocuments() {
+    if (updateInProgress) return;
+    updateInProgress = true;
+
+    try {
+      const response = await fetch('./api/recent-documents.php?limit=12');
+      if (!response.ok) {
+        console.error('Failed to fetch recent documents:', response.status);
+        updateInProgress = false;
+        return;
+      }
+
+      const result = await response.json();
+      if (!result.success || !Array.isArray(result.documents)) {
+        updateInProgress = false;
+        return;
+      }
+
+      const tableBody = document.getElementById('tableBody');
+      const currentRows = Array.from(tableBody.querySelectorAll('tr'));
+
+      // If no documents, show empty message
+      if (result.documents.length === 0) {
+        if (currentRows.length !== 1 || !currentRows[0].classList.contains('empty-row')) {
+          tableBody.innerHTML = '<tr class="empty-row"><td colspan="5">No document requests found.</td></tr>';
+        }
+        updateInProgress = false;
+        return;
+      }
+
+      // Build new HTML for all rows
+      let newHTML = '';
+      result.documents.forEach((doc, index) => {
+        const statusClass = doc.status.toLowerCase() === 'processing' ? 'status-processing' :
+                           (doc.status.toLowerCase() === 'completed' ? 'status-completed' : 'status-pending');
+        
+        newHTML += `
+          <tr class="update-fade">
+            <td><span class="tracking-id">${escapeHtml(doc.tracking_id)}</span></td>
+            <td>${escapeHtml(doc.fullname)}</td>
+            <td>${escapeHtml(doc.document_type)}</td>
+            <td><span class="status-badge ${statusClass}">${escapeHtml(doc.status)}</span></td>
+            <td class="date-cell">${escapeHtml(doc.created_at)}</td>
+          </tr>
+        `;
+      });
+
+      // Update table body
+      tableBody.innerHTML = newHTML;
+
+      // Trigger fade-in animation
+      setTimeout(() => {
+        document.querySelectorAll('.update-fade').forEach(row => {
+          row.classList.add('fade-in');
+        });
+      }, 10);
+
+      lastDocumentCount = result.documents.length;
+    } catch (err) {
+      console.error('Error updating recent documents:', err);
+    }
+
+    updateInProgress = false;
+  }
+
+  function escapeHtml(text) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return (text || '').replace(/[&<>"']/g, m => map[m]);
+  }
+
+  // Initial fetch on page load
+  updateRecentDocuments();
+
+  // Update every 5 seconds
+  setInterval(updateRecentDocuments, 5000);
 
 </script>
 </body>

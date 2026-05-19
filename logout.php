@@ -6,31 +6,8 @@ session_start();
 
 // If POST -> perform logout, otherwise show confirmation page
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Include DB only when needed
-    @include_once __DIR__ . '/db.php';
-
     // Capture current user id before destroying session (if set)
     $user_id = $_SESSION['user_id'] ?? null;
-
-    // If a DB connection is available, try to record logout time (optional).
-    if ($user_id) {
-        if (isset($conn) && $conn instanceof mysqli) {
-            if ($stmt = $conn->prepare("UPDATE users SET last_logout = NOW() WHERE id = ?")) {
-                $stmt->bind_param("i", $user_id);
-                $stmt->execute();
-                $stmt->close();
-            }
-        } elseif (isset($mysqli) && $mysqli instanceof mysqli) {
-            if ($stmt = $mysqli->prepare("UPDATE users SET last_logout = NOW() WHERE id = ?")) {
-                $stmt->bind_param("i", $user_id);
-                $stmt->execute();
-                $stmt->close();
-            }
-        } elseif (isset($pdo) && $pdo instanceof PDO) {
-            $stmt = $pdo->prepare("UPDATE users SET last_logout = NOW() WHERE id = :id");
-            $stmt->execute([':id' => $user_id]);
-        }
-    }
 
     // Clear session and cookies
     $_SESSION = [];
@@ -51,13 +28,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Show simple logged-out page and redirect to login
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'];
+    $base_url = $protocol . '://' . $host . dirname($_SERVER['REQUEST_URI']);
+    $login_url = $protocol . '://' . $host . '/Document_Tracker_Final-develop/Login.php';
     ?>
     <!doctype html>
     <html lang="en">
     <head>
         <meta charset="utf-8">
         <title>Logged out</title>
-        <meta http-equiv="refresh" content="3;url=login.php">
+        <meta http-equiv="refresh" content="3;url=<?php echo htmlspecialchars($login_url); ?>">
         <style>
             body { font-family: Arial, Helvetica, sans-serif; background:#f5f7fb; color:#333; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
             .card { background:#fff; padding:24px; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.06); text-align:center; width:320px; }
@@ -68,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="card">
             <h2>You have been logged out</h2>
             <p>Redirecting to login page...</p>
-            <a class="button" href="login.php">Go to Login Now</a>
+            <a class="button" href="<?php echo htmlspecialchars($login_url); ?>">Go to Login Now</a>
         </div>
     </body>
     </html>

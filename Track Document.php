@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/app_init.php';
+require_once __DIR__ . '/email_helper.php';
 
 $rows = [];
 $selectedId = isset($_GET['id']) ? (string)$_GET['id'] : '';
@@ -14,6 +15,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     header('Content-Type: application/json; charset=utf-8');
     if (!$trackingId || !$mysqli instanceof mysqli) {
         echo json_encode(['success' => false, 'message' => 'Invalid request.']);
+        exit;
+    }
+
+    // Fetch current status and user email/name BEFORE updating
+    $userEmail = '';
+    $userName = '';
+    $oldStatus = '';
+    $checkStmt = $mysqli->prepare("SELECT status, email, COALESCE(fullname, full_name) AS fullname FROM requests WHERE tracking_id = ? LIMIT 1");
+    if ($checkStmt) {
+        $checkStmt->bind_param('s', $trackingId);
+        if ($checkStmt->execute()) {
+            $checkResult = $checkStmt->get_result();
+            if ($checkRow = $checkResult->fetch_assoc()) {
+                $oldStatus = trim((string)($checkRow['status'] ?? '')); // Trim to match comparison
+                $userEmail = trim((string)($checkRow['email'] ?? ''));
+                $userName = trim((string)($checkRow['fullname'] ?? ''));
+            }
+            $checkResult->free();
+        }
+        $checkStmt->close();
+    }
+    
+    // Validate status is allowed value (prevent invalid data insertion)
+    $allowedStatuses = ['Pending', 'Processing', 'Completed', 'Rejected'];
+    if (!in_array($status, $allowedStatuses, true)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid status value.']);
         exit;
     }
 
@@ -34,6 +61,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     if ($stmt = $mysqli->prepare($sql)) {
       $stmt->bind_param('siss', $status, $progress, $remarks, $trackingId);
         if ($stmt->execute()) {
+            // Send completion email only if status is changing TO "Completed" (not from it)
+            if ($status === 'Completed' && $oldStatus !== 'Completed' && $userEmail && $userName) {
+                $emailSent = sendDocumentCompleteEmail($userEmail, $userName);
+                if (!$emailSent) {
+                    error_log("Warning: Email notification failed for tracking ID: {$trackingId}, recipient: {$userEmail}");
+                }
+            } elseif ($status === 'Completed' && $oldStatus !== 'Completed' && (!$userEmail || !$userName)) {
+                error_log("Warning: Missing email or name for tracking ID {$trackingId}. Email: '$userEmail', Name: '$userName'");
+            }
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Unable to update request.']);
@@ -50,7 +86,7 @@ if ($pdo instanceof PDO) {
     try {
         $check = $pdo->query("SHOW TABLES LIKE 'requests'")->fetchAll(PDO::FETCH_COLUMN);
         if (!empty($check)) {
-            $stmt = $pdo->query("SELECT tracking_id, COALESCE(fullname, full_name) AS name, COALESCE(document_type, doc_type) AS type, status, COALESCE(progress,0) AS progress, DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COALESCE(remarks,'') AS remarks FROM requests ORDER BY created_at DESC");
+            $stmt = $pdo->query("SELECT tracking_id, COALESCE(fullname, full_name) AS name, COALESCE(document_type, doc_type) AS type, status, COALESCE(progress,0) AS progress, DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COALESCE(remarks,'') AS remarks, COALESCE(email, '') AS email FROM requests ORDER BY created_at DESC");
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
     } catch (Exception $e) {
@@ -60,7 +96,7 @@ if ($pdo instanceof PDO) {
     if ($res = $mysqli->query("SHOW TABLES LIKE 'requests'")) {
         if ($res->num_rows > 0) {
             $res->free();
-            $q = "SELECT tracking_id, COALESCE(fullname, full_name) AS name, COALESCE(document_type, doc_type) AS type, status, COALESCE(progress,0) AS progress, DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COALESCE(remarks,'') AS remarks FROM requests ORDER BY created_at DESC";
+            $q = "SELECT tracking_id, COALESCE(fullname, full_name) AS name, COALESCE(document_type, doc_type) AS type, status, COALESCE(progress,0) AS progress, DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COALESCE(remarks,'') AS remarks, COALESCE(email, '') AS email FROM requests ORDER BY created_at DESC";
             if ($r = $mysqli->query($q)) {
                 while ($row = $r->fetch_assoc()) {
                     // ensure types are consistent for the front-end
@@ -424,21 +460,6 @@ if ($pdo instanceof PDO) {
   .status-pending    { background: rgba(245,158,11,0.15); color: var(--amber); }
   .status-rejected   { background: rgba(239,68,68,0.15);  color: var(--red); }
 
-  /* ── Progress bar ── */
-  .progress-cell { min-width: 140px; }
-  .progress-wrap { display: flex; flex-direction: column; gap: 5px; }
-  .progress-bar-bg {
-    height: 6px; border-radius: 10px;
-    background: rgba(99,140,200,0.12); overflow: hidden;
-  }
-  .progress-bar-fill {
-    height: 100%; border-radius: 10px;
-    transition: width 1.2s cubic-bezier(0.4,0,0.2,1);
-    animation: fillBar 1.2s ease both;
-  }
-  @keyframes fillBar { from { width: 0 !important; } }
-  .progress-pct { font-size: 11px; color: var(--text-muted); font-weight: 500; }
-
   .date-cell { color: var(--text-muted); font-size: 12.5px; font-weight: 300; white-space: nowrap; }
 
   .action-btn {
@@ -535,6 +556,50 @@ if ($pdo instanceof PDO) {
     cursor: pointer; transition: opacity 0.2s;
   }
   .btn-primary:hover { opacity: 0.88; }
+
+  .btn-danger {
+    padding: 10px 24px; border-radius: 10px;
+    background: linear-gradient(135deg, #ef4444, #dc2626); border: none;
+    color: #fff; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .btn-danger:hover { opacity: 0.88; }
+
+  .btn-details {
+    padding: 6px 12px; border-radius: 8px;
+    background: rgba(37,99,235,0.15); border: 1px solid var(--blue);
+    color: var(--blue); font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-details:hover { background: rgba(37,99,235,0.25); border-color: #1d4ed8; }
+
+  .btn-delete {
+    padding: 6px 12px; border-radius: 8px; margin-left: 6px;
+    background: rgba(220,38,38,0.15); border: 1px solid rgba(220,38,38,0.5);
+    color: #ef4444; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-delete:hover { background: rgba(220,38,38,0.25); border-color: #dc2626; }
+
+  .actions-cell { text-align: center; white-space: nowrap; }
+
+  .modal-content { margin-bottom: 20px; }
+  .detail-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .detail-row label {
+    font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+    font-weight: 500; flex-shrink: 0;
+  }
+  .detail-value {
+    font-size: 14px; color: var(--text); text-align: right;
+    word-break: break-word; flex: 1; margin-left: 16px;
+  }
+  .detail-row:last-child { border-bottom: none; }
+
+  .modal-overlay.show { opacity: 1 !important; pointer-events: all !important; }
+  .modal-overlay.show .modal { transform: none !important; }
 
   /* ── Toast ── */
   .toast {
@@ -640,7 +705,6 @@ if ($pdo instanceof PDO) {
           <option value="date-desc">Date (Newest)</option>
           <option value="date-asc">Date (Oldest)</option>
           <option value="id-asc">Tracking ID (A–Z)</option>
-          <option value="progress-desc">Progress (High–Low)</option>
         </select>
       </div>
       <div class="filter-actions">
@@ -666,8 +730,8 @@ if ($pdo instanceof PDO) {
             <th>Name</th>
             <th>Document Type</th>
             <th onclick="sortBy('status')">Status <span class="sort-icon">↕</span></th>
-            <th>Progress</th>
             <th onclick="sortBy('date')">Date <span class="sort-icon">↕</span></th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -713,10 +777,7 @@ if ($pdo instanceof PDO) {
         <option value="Rejected">Rejected</option>
       </select>
     </div>
-    <div class="modal-field">
-      <label>Progress (%)</label>
-      <input type="number" id="modalProgress" min="0" max="100" placeholder="e.g. 75">
-    </div>
+
     <div class="modal-field">
       <label>Remarks (optional)</label>
       <textarea id="modalRemarks" placeholder="Add notes about the status update..."></textarea>
@@ -724,6 +785,66 @@ if ($pdo instanceof PDO) {
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal()">Cancel</button>
       <button class="btn-primary" onclick="applyStatusUpdate()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── RECIPIENT DETAILS MODAL ── -->
+<div class="modal-overlay" id="recipientOverlay" onclick="closeRecipientModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">👤 Recipient Details</div>
+      <button class="modal-close" onclick="closeRecipientModal()">✕</button>
+    </div>
+    <div class="modal-content">
+      <div class="detail-row">
+        <label>Tracking ID:</label>
+        <span id="detailTrackingId" class="detail-value">-</span>
+      </div>
+      <div class="detail-row">
+        <label>Full Name:</label>
+        <span id="detailName" class="detail-value">-</span>
+      </div>
+      <div class="detail-row">
+        <label>Email Address:</label>
+        <span id="detailEmail" class="detail-value">-</span>
+      </div>
+      <div class="detail-row">
+        <label>Document Type:</label>
+        <span id="detailType" class="detail-value">-</span>
+      </div>
+      <div class="detail-row">
+        <label>Status:</label>
+        <span id="detailStatus" class="detail-value">-</span>
+      </div>
+      <div class="detail-row">
+        <label>Date Submitted:</label>
+        <span id="detailDate" class="detail-value">-</span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="closeRecipientModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DELETE CONFIRMATION MODAL ── -->
+<div class="modal-overlay" id="deleteConfirmOverlay" onclick="closeDeleteConfirm(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ Delete Document</div>
+      <button class="modal-close" onclick="closeDeleteConfirm()">✕</button>
+    </div>
+    <div class="modal-content">
+      <p style="color: var(--text-muted); margin-bottom: 16px;">Are you sure you want to delete this document request? This action cannot be undone.</p>
+      <div class="detail-row" style="border: none; padding: 0;">
+        <label>Tracking ID:</label>
+        <span id="deleteTrackingId" class="detail-value">-</span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeDeleteConfirm()">Cancel</button>
+      <button class="btn-danger" onclick="performDelete()">Delete Document</button>
     </div>
   </div>
 </div>
@@ -751,7 +872,8 @@ if ($pdo instanceof PDO) {
     type: d.type ?? d.document_type ?? '',
     status: d.status ?? 'Pending',
     progress: parseInt(d.progress ?? 0),
-    date: d.date ?? d.created_at ?? ''
+    date: d.date ?? d.created_at ?? '',
+    email: d.email ?? ''
   }));
 
   const PRESELECT = <?php echo json_encode($selectedId, JSON_UNESCAPED_UNICODE); ?>;
@@ -763,7 +885,6 @@ if ($pdo instanceof PDO) {
     const doc = documents.find(x => x.id === id);
     if (doc) {
       document.getElementById('modalStatus').value = doc.status || 'Pending';
-      document.getElementById('modalProgress').value = doc.progress ?? '';
     }
     document.getElementById('modalOverlay').classList.add('open');
   }
@@ -772,12 +893,7 @@ if ($pdo instanceof PDO) {
   const PAGE_SIZE = 7;
   let filtered = [...documents];
 
-  function progressColor(pct, status) {
-    if (status === 'Completed') return 'var(--green)';
-    if (status === 'Pending') return 'var(--amber)';
-    if (status === 'Rejected') return 'var(--red)';
-    return 'var(--blue-light)';
-  }
+
 
   function statusClass(s) {
     return { Processing:'status-processing', Completed:'status-completed', Pending:'status-pending', Rejected:'status-rejected' }[s] || '';
@@ -804,21 +920,16 @@ if ($pdo instanceof PDO) {
     page.forEach((doc, i) => {
       const tr = document.createElement('tr');
       tr.style.animationDelay = `${i * 0.04}s`;
-      const color = progressColor(doc.progress, doc.status);
       tr.innerHTML = `
         <td><span class="tracking-id">${doc.id}</span></td>
         <td>${doc.name}</td>
         <td><span class="doc-type-chip"><span class="doc-type-icon">${docTypeIcons[doc.type] || '📄'}</span>${doc.type}</span></td>
         <td><span class="status-badge ${statusClass(doc.status)}">${doc.status}</span></td>
-        <td class="progress-cell">
-          <div class="progress-wrap">
-            <div class="progress-bar-bg">
-              <div class="progress-bar-fill" style="width:${doc.progress}%; background:${color};"></div>
-            </div>
-            <span class="progress-pct">${doc.progress}%</span>
-          </div>
-        </td>
         <td class="date-cell">${doc.date}</td>
+        <td class="actions-cell">
+          <button class="btn-details" onclick="showRecipientDetails('${doc.id}')">👤 Details</button>
+          <button class="btn-delete" onclick="confirmDelete('${doc.id}')">🗑️ Delete</button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
@@ -841,7 +952,6 @@ if ($pdo instanceof PDO) {
       if (sortVal === 'date-asc')       return a.date.localeCompare(b.date);
       if (sortVal === 'date-desc')      return b.date.localeCompare(a.date);
       if (sortVal === 'id-asc')         return a.id.localeCompare(b.id);
-      if (sortVal === 'progress-desc')  return b.progress - a.progress;
       return 0;
     });
 
@@ -891,43 +1001,55 @@ if ($pdo instanceof PDO) {
   async function applyStatusUpdate() {
     const id = document.getElementById('modalTrackingId').value;
     const newStatus = document.getElementById('modalStatus').value;
-    const progress = parseInt(document.getElementById('modalProgress').value);
     const remarks = document.getElementById('modalRemarks').value.trim();
 
     const formData = new FormData();
-    formData.append('action', 'update-status');
     formData.append('tracking_id', id);
     formData.append('status', newStatus);
-    formData.append('progress', isNaN(progress) ? '' : progress);
     formData.append('remarks', remarks);
 
     try {
-      const response = await fetch(window.location.href, { method: 'POST', body: formData });
-      const result = await response.json();
-      if (!result.success) {
-        showToast(result.message || 'Unable to update request.', 'error');
+      const response = await fetch('./api/update-status.php', { method: 'POST', body: formData });
+      if (!response.ok) {
+        console.error('HTTP Error:', response.status, response.statusText);
+        showToast(`HTTP Error ${response.status}: ${response.statusText}`);
         return;
       }
+      const result = await response.json();
+      if (!result.success) {
+        showToast(result.message || 'Unable to update request.');
+        return;
+      }
+      
+      // Show email status if updating to Completed
+      if (newStatus === 'Completed') {
+        if (result.data && result.data.email_attempted) {
+          if (result.data.email_sent) {
+            showToast('✅ Status updated & completion email sent!');
+          } else {
+            showToast('⚠️ Status updated but email sending failed. Check settings.');
+          }
+        } else {
+          showToast('✅ Request is completed! Email notification sent to recipient.');
+        }
+      } else {
+        showToast(`✅ Status updated to ${newStatus}`);
+      }
     } catch (err) {
-      console.error(err);
-      showToast('Network error while updating status.', 'error');
+      console.error('Network error:', err);
+      showToast(`Network error: ${err.message}`);
       return;
     }
 
     const doc = documents.find(d => d.id === id);
     if (doc) {
       doc.status = newStatus;
-      if (!isNaN(progress)) {
-        doc.progress = Math.min(100, Math.max(0, progress));
-      }
       doc.remarks = remarks;
     }
 
     applyFilters();
     closeModal();
-    showToast(`Status updated to ${newStatus}`);
 
-    document.getElementById('modalProgress').value = '';
     document.getElementById('modalRemarks').value = '';
   }
 
@@ -941,6 +1063,75 @@ if ($pdo instanceof PDO) {
     t.textContent = '✅ ' + msg;
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 3200);
+  }
+
+  function showRecipientDetails(id) {
+    const doc = documents.find(d => d.id === id);
+    if (!doc) {
+      showToast('Document not found.');
+      return;
+    }
+    
+    document.getElementById('detailTrackingId').textContent = doc.id || '-';
+    document.getElementById('detailName').textContent = doc.name || '-';
+    document.getElementById('detailEmail').textContent = doc.email || '-';
+    document.getElementById('detailType').textContent = doc.type || '-';
+    document.getElementById('detailStatus').textContent = doc.status || '-';
+    document.getElementById('detailDate').textContent = doc.date || '-';
+    
+    document.getElementById('recipientOverlay').classList.add('show');
+  }
+
+  function closeRecipientModal(e) {
+    if (e && e.target !== document.getElementById('recipientOverlay')) return;
+    document.getElementById('recipientOverlay').classList.remove('show');
+  }
+
+  let deleteTargetId = null;
+
+  function confirmDelete(id) {
+    deleteTargetId = id;
+    document.getElementById('deleteTrackingId').textContent = id;
+    document.getElementById('deleteConfirmOverlay').classList.add('show');
+  }
+
+  function closeDeleteConfirm(e) {
+    if (e && e.target !== document.getElementById('deleteConfirmOverlay')) return;
+    document.getElementById('deleteConfirmOverlay').classList.remove('show');
+    deleteTargetId = null;
+  }
+
+  async function performDelete() {
+    if (!deleteTargetId) return;
+
+    try {
+      const response = await fetch('./api/delete-request.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tracking_id: deleteTargetId })
+      });
+
+      if (!response.ok) {
+        console.error('HTTP Error:', response.status);
+        showToast(`Error deleting document (HTTP ${response.status})`);
+        return;
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        showToast(result.message || 'Failed to delete document.');
+        return;
+      }
+
+      // Remove from local array
+      documents = documents.filter(d => d.id !== deleteTargetId);
+      applyFilters();
+      closeDeleteConfirm();
+      showToast('Document deleted successfully');
+    } catch (err) {
+      console.error('Network error:', err);
+      showToast(`Network error: ${err.message}`);
+    }
   }
 
 
